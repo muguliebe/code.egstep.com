@@ -1,6 +1,6 @@
 package com.egstep.code
 
-import nz.net.ultraq.thymeleaf.LayoutDialect
+//import nz.net.ultraq.thymeleaf.LayoutDialect
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Description
@@ -26,7 +26,7 @@ class BaseConfig {
     fun templateEngine(): SpringTemplateEngine? {
         val templateEngine = SpringTemplateEngine()
         templateEngine.setTemplateResolver(templateResolver())
-        templateEngine.addDialect(LayoutDialect())
+//        templateEngine.addDialect(LayoutDialect())
         return templateEngine
     }
 
