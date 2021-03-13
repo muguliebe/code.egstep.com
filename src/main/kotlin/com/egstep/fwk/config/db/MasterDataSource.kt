@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Logger
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
@@ -21,26 +22,30 @@ import org.springframework.transaction.PlatformTransactionManager
 import javax.persistence.EntityManagerFactory
 import javax.sql.DataSource
 
-@Profile("embedded")
 @Configuration
 @EnableJpaRepositories(basePackages = ["com.egstep.code.repo.jpa"],
     entityManagerFactoryRef = "entityManagerFactory",
-    transactionManagerRef = "publicTransactionManager")
-class EmbeddedDataSource {
+    transactionManagerRef = "primaryTransactionManager")
+class MasterDataSource {
     companion object {
-        private val log = LoggerFactory.getLogger(EmbeddedDataSource::class.java) as Logger
+        private val log = LoggerFactory.getLogger(MasterDataSource::class.java) as Logger
     }
 
-    @Bean(name = ["emPrimaryDataSource"])
-    @DependsOn("embeddedPrimaryDb")
-    @Order(Ordered.LOWEST_PRECEDENCE)
-    fun dataSource(): DataSource {
-        log.info("=============== JPA Public DataSource Setting Start =============== ")
+    @Bean(name = ["dsMaster"])
+    fun dsMaster(
+        @Value("\${db.jpa.master.url}") url: String,
+        @Value("\${db.common.minIdle}") minIdle: Int,
+        @Value("\${db.common.maxPoolSize}") maxPoolSize: Int,
+        @Value("\${db.common.idleTimeout}") idleTimeout: Long,
+        @Value("\${db.master.userName}") userName: String,
+        @Value("\${db.master.password}") password: String
+    ): DataSource {
+        log.info("=============== JPA Primary DataSource Setting Start =============== ")
 
         val ds = HikariDataSource()
-        ds.jdbcUrl = "jdbc:postgresql://localhost:55432/postgres?ssl=false&charset=utf8"
-        ds.username = "postgres"
-        ds.password = "postgres"
+        ds.jdbcUrl = url
+        ds.username = userName
+        ds.password = password
         ds.minimumIdle = 5
         ds.maximumPoolSize = 100
         ds.idleTimeout = 3000
@@ -54,7 +59,11 @@ class EmbeddedDataSource {
     @Bean(name = ["entityManagerFactory"])
     @Order(Ordered.LOWEST_PRECEDENCE)
     fun entityManagerFactory(
-        @Qualifier("emPrimaryDataSource") dataSource: DataSource
+        @Qualifier("dsMaster") dataSource: DataSource,
+        @Value("\${db.common.dialect}") dialect: String,
+        @Value("\${db.jpa.master.schema}") schema: String,
+        @Value("\${db.jpa.master.ddl-auto}") ddlAuto: String,
+        @Value("\${db.jpa.master.entity-packages}") entityPackages: Array<String>
     ): LocalContainerEntityManagerFactoryBean {
 
         val vendorAdapter = HibernateJpaVendorAdapter()
@@ -62,10 +71,10 @@ class EmbeddedDataSource {
         vendorAdapter.setGenerateDdl(true)
 
         val properties: HashMap<String, Any> = hashMapOf()
-        properties["hibernate.default_schema"] = "public"
-        properties["hibernate.hbm2ddl.auto"] = "none"
-        properties["hibernate.ddl-auto"] = "none"
-        properties["hibernate.dialect"] = "org.hibernate.dialect.PostgreSQLDialect"
+        properties["hibernate.default_schema"] = schema
+        properties["hibernate.hbm2ddl.auto"] = ddlAuto
+        properties["hibernate.ddl-auto"] = ddlAuto
+        properties["hibernate.dialect"] = dialect
         properties["hibernate.physical_naming_strategy"] = "org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy"
         properties["hibernate.cache.use_second_level_cache"] = false
         properties["hibernate.cache.use_query_cache"] = false
@@ -75,16 +84,16 @@ class EmbeddedDataSource {
         val em = LocalContainerEntityManagerFactoryBean()
         em.dataSource = dataSource
         em.jpaVendorAdapter = vendorAdapter
-        em.setPackagesToScan("com.exam.bank.entity")
+        em.setPackagesToScan(*entityPackages)
         em.setJpaPropertyMap(properties)
 
         return em
     }
 
-    @Bean(name=["publicTransactionManager"])
+    @Bean(name=["primaryTransactionManager"])
     @Order(Ordered.LOWEST_PRECEDENCE)
     fun transactionManager(@Qualifier("entityManagerFactory") entityManagerFactory: EntityManagerFactory,
-                           @Qualifier("emPrimaryDataSource") dataSource: DataSource
+                           @Qualifier("dsMaster") dataSource: DataSource
     ): PlatformTransactionManager {
         val jtm = JpaTransactionManager(entityManagerFactory)
         val dstm = DataSourceTransactionManager()

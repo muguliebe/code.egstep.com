@@ -9,6 +9,7 @@ import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import javax.sql.DataSource
 
+@Profile("embedded")
 @Configuration
 class EmbeddedDb {
 
