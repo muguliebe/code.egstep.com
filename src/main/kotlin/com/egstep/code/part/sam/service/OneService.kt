@@ -1,4 +1,4 @@
-package com.egstep.code
+package com.egstep.code.part.sam.service
 
 import org.springframework.stereotype.Service
 

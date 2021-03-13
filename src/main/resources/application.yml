@@ -1,6 +1,8 @@
 spring:
   flyway:
     enabled: false
+app:
+  name: code
 db:
   common:
     minIdle: 5

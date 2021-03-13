@@ -1,5 +1,6 @@
-package com.egstep.code
+package com.egstep.code.part.sam.controller
 
+import com.egstep.code.part.sam.service.OneService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
